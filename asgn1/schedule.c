@@ -21,7 +21,7 @@ typedef struct sched_ll {
 
 ll_node head = {0, &head, &head};
 ll_node* curr = &head;
-long quantum;  
+long quantum;
 
 void set_timer() {
    static struct itimerval timer;

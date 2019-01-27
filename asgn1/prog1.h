@@ -9,4 +9,8 @@ typedef struct roundRobinNode {
    struct roundRobinNode* next;
    struct roundRobinNode* prev;
 } roundRobinNode;
+void set_timer();
+void cancel_timer();
+void handler(int signum);
+void remove_job();
 #endif
