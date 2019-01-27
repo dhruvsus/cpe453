@@ -1,3 +1,12 @@
+#ifndef PROG_H
+#define PROG_H
+
 #define MAX_PROCESSES 100
 #define MAX_ARGUMENTS 10
-int build_args(char* [], char* [], int startIndex, int argc);
+void schedule_job(char** first);
+typedef struct roundRobinNode {
+   pid_t pid;
+   struct roundRobinNode* next;
+   struct roundRobinNode* prev;
+} roundRobinNode;
+#endif
