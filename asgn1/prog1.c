@@ -9,6 +9,12 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
+typedef struct roundRobinNode {
+   pid_t pid;
+   struct roundRobinNode* next;
+   struct roundRobinNode* prev;
+} roundRobinNode;
+
 //global variables
 roundRobinNode head = {.pid = 0, .next = &head, .prev = &head};
 roundRobinNode *curr = &head;
@@ -57,7 +63,7 @@ int main(int argc, char *argv[])
     curr = head.next;
 
     /* Schedule alarm handler. */
-    struct sigaction alarmAction = {0};
+    struct sigaction alarmAction = {{0}};
     alarmAction.sa_handler = handler;
     sigaction(SIGALRM, &alarmAction, NULL);
 
@@ -98,7 +104,7 @@ void schedule_job(char **first)
         //after getting the first SIGCONT
         execvp(*first, first);
         // kill since the process has been done and is no longer needed
-        exit(EXIT_SUCCESS);
+        exit(2);
     }
     // parent error checks and inserts node into list
     if (child == -1)
@@ -134,7 +140,7 @@ void set_timer()
 
 void cancel_timer()
 {
-    static struct itimerval cancelAlarm = {0};
+    static struct itimerval cancelAlarm = {{0}};
     setitimer(ITIMER_REAL, &cancelAlarm, NULL);
 }
 
