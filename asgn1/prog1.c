@@ -10,38 +10,45 @@ int main(int argc, char *argv[])
 {
     if (argc < 2)
     {
-        inputErr();
-        return 1;
+        fprintf(stderr,
+                "usage: %s <quantum> [prog 1 [args] [: prog 2 [args] [: ...]]]\n",
+                argv[0]);
+        exit(1);
     }
-    int quantum = atoi(argv[1]);
+    long quantum = strtol(argv[1], NULL, 10);
+    //error check for quantum
+    if (quantum < 1)
+    {
+        fprintf(stderr, "%s: invalid quantum, enter quantum greater than 0", argv[1]);
+        exit(1);
+    }
+
     // starting address of first program name
     int index = 2;
+    //pointer to first program name
+    
+    char **first=argv+index;
     // int status=0;
     while (index < argc)
     {
-        char *args[MAX_ARGUMENTS + 1];
-        char *progName = argv[index];
-        index++;
-        index = build_args(argv, args, index, argc);
-        int pid = fork();
-        if (pid == 0)
+        if (!strcmp(argv[index], ":"))
         {
-            printf("This is being printed from the child process\n");
-            printf("%s\n", progName);
-            printf("%s\n", args[0]);
-            execvp("./two", argv[3]);
+            //index points to index of the :
+            //set : to char* NULL for execvp
+            argv[index]=NULL;
+            //schedule job with arguments from first+1 to index
+            schedule_job(first);
+            //set first to point to new job
+            first=argv+index+1;
         }
-        wait(NULL);
-        printf("Finished executing the parent process\n"
-               " - the child won't get here--you will only see this once\n");
+        index++;
     }
+    // the while loop won't catch the last job as it doesn't have a :
+    schedule_job(first);
+    
     return 0;
 }
-void inputErr()
-{
-    fprintf(stderr, "erroneous input. input format:\n");
-    fprintf(stderr, "prog1 quantum [prg 1 [args] [: prg 2 [args] [: prg3 [args] [: … ]]]]\n");
-}
+
 int build_args(char *argv[], char *args[], int startIndex, int argc)
 {
     int argsIndex = 0;
