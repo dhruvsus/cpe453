@@ -6,7 +6,6 @@
 
 void scheduleJob(char** first);
 void setTimer();
-void cancelTimer();
 void handler(int signum);
 void removeJob();
 #endif

@@ -24,28 +24,13 @@ long quantum = -1;
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
-    {
-        fprintf(stderr,
-                "usage: %s <quantum> [prog 1 [args] [: prog 2 [args] [: ...]]]\n",
-                argv[0]);
-        exit(1);
-    }
     quantum = strtol(argv[1], NULL, 10);
     //convert quantum to microseconds
     quantum = quantum * 1000;
-    //error check for quantum
-    if (quantum < 1)
-    {
-        fprintf(stderr, "%s: invalid quantum, enter quantum greater than 0", argv[1]);
-        exit(1);
-    }
-
     // starting address of first program name
     int index = 2;
     //pointer to first program name
-
-    char **first = argv + index;
+    char **first = &argv[2];
     // int status=0;
     while (index < argc)
     {
@@ -66,9 +51,9 @@ int main(int argc, char *argv[])
     curr = head.next;
 
     // alarm handler
-    struct sigaction alarmAction = {{0}};
-    alarmAction.sa_handler = handler;
-    sigaction(SIGALRM, &alarmAction, NULL);
+    struct sigaction action = {{0}};
+    action.sa_handler = handler;
+    sigaction(SIGALRM, &action, NULL);
 
     kill(curr->pid, SIGCONT);
     setTimer();
@@ -82,8 +67,9 @@ int main(int argc, char *argv[])
         {
             continue;
         }
-
-        cancelTimer();
+        // cancel timer
+        static struct itimerval cancelAlarm = {{0}};
+        setitimer(ITIMER_REAL, &cancelAlarm, NULL);
         removeJob();
         if (curr->pid == 0)
         {
@@ -136,12 +122,6 @@ void setTimer()
     itimer.it_interval.tv_sec = sec;
     itimer.it_interval.tv_usec = usec;
     setitimer(ITIMER_REAL, &itimer, NULL);
-}
-
-void cancelTimer()
-{
-    static struct itimerval cancelAlarm = {{0}};
-    setitimer(ITIMER_REAL, &cancelAlarm, NULL);
 }
 
 void handler(int signum)
