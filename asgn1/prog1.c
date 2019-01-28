@@ -9,10 +9,11 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
-typedef struct roundRobinNode {
-   pid_t pid;
-   struct roundRobinNode* next;
-   struct roundRobinNode* prev;
+typedef struct roundRobinNode
+{
+    pid_t pid;
+    struct roundRobinNode *next;
+    struct roundRobinNode *prev;
 } roundRobinNode;
 
 //global variables
@@ -31,6 +32,8 @@ int main(int argc, char *argv[])
         exit(1);
     }
     quantum = strtol(argv[1], NULL, 10);
+    //convert quantum to microseconds
+    quantum = quantum * 1000;
     //error check for quantum
     if (quantum < 1)
     {
@@ -52,23 +55,23 @@ int main(int argc, char *argv[])
             //set : to char* NULL for execvp
             argv[index] = NULL;
             //schedule job with arguments from first+1 to index
-            schedule_job(first);
+            scheduleJob(first);
             //set first to point to new job
             first = argv + index + 1;
         }
         index++;
     }
     // the while loop won't catch the last job as it doesn't have a :
-    schedule_job(first);
+    scheduleJob(first);
     curr = head.next;
 
-    /* Schedule alarm handler. */
+    // alarm handler
     struct sigaction alarmAction = {{0}};
     alarmAction.sa_handler = handler;
     sigaction(SIGALRM, &alarmAction, NULL);
 
     kill(curr->pid, SIGCONT);
-    set_timer();
+    setTimer();
 
     pid_t child;
     int status;
@@ -80,20 +83,20 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        cancel_timer();
-        remove_job();
+        cancelTimer();
+        removeJob();
         if (curr->pid == 0)
         {
             break;
         }
 
         kill(curr->pid, SIGCONT);
-        set_timer();
+        setTimer();
     }
 
     return 0;
 }
-void schedule_job(char **first)
+void scheduleJob(char **first)
 {
     // launch and stop child
     pid_t child = fork();
@@ -120,25 +123,22 @@ void schedule_job(char **first)
     head.prev = node;
     return;
 }
-void set_timer()
+void setTimer()
 {
-    static struct itimerval timer;
-
+    // convert microseconds to xsec + ymicroseconds
     long sec = quantum / 1000000;
     long usec = quantum % 1000000;
 
-    /* Send first alarm at quantum. */
-    timer.it_value.tv_sec = sec;
-    timer.it_value.tv_usec = usec;
+    static struct itimerval itimer;
 
-    /* Send successive alarms at quantum interval. */
-    timer.it_interval.tv_sec = sec;
-    timer.it_interval.tv_usec = usec;
-
-    setitimer(ITIMER_REAL, &timer, NULL);
+    itimer.it_value.tv_sec = sec;
+    itimer.it_value.tv_usec = usec;
+    itimer.it_interval.tv_sec = sec;
+    itimer.it_interval.tv_usec = usec;
+    setitimer(ITIMER_REAL, &itimer, NULL);
 }
 
-void cancel_timer()
+void cancelTimer()
 {
     static struct itimerval cancelAlarm = {{0}};
     setitimer(ITIMER_REAL, &cancelAlarm, NULL);
@@ -146,21 +146,20 @@ void cancel_timer()
 
 void handler(int signum)
 {
+    // stop current process and move cur along
     kill(curr->pid, SIGSTOP);
-
-    /* Advance cursor. */
     curr = curr->next;
-    if (curr == &head)
+    // if cur lands on head
+    if (curr->pid == 0)
     {
         curr = curr->next;
     }
-
-    /* List is empty. */
+    // if the list of pcb's is empty
     if (&head == head.next)
     {
         return;
     }
-
+    // start the next process
     int result = kill(curr->pid, SIGCONT);
 
     // Only one process left in the list, but it is no longer running.
@@ -169,16 +168,18 @@ void handler(int signum)
         exit(0);
     }
 }
-void remove_job()
+void removeJob()
 {
     roundRobinNode *next = curr->next;
     roundRobinNode *prev = curr->prev;
 
+    // break connections between curr->prev and curr->next to remove cur
     next->prev = prev;
     prev->next = next;
-
     free(curr);
+    // move curr along
     curr = next;
+    // if the process that cur lands on is the head wrap around
     if (curr->pid == 0)
     {
         curr = curr->next;
