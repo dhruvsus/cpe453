@@ -93,7 +93,7 @@ void scheduleJob(char **first)
         //after getting the first SIGCONT
         execvp(*first, first);
         // kill since the process has been done and is no longer needed
-        exit(2);
+        exit(0);
     }
     // parent error checks and inserts node into list
     if (child == -1)
