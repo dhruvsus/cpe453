@@ -51,21 +51,23 @@ int n; // numbers from 1 to n added to buffer
 int bufSize; // size of bounded buffer
 int bufLocation=0;
 int bufValue=0;
+int consumerLocation=0;
+int consumerValue=0;
+int consumerNoReads=0;
 int sum=0;
 int* buf;
 int main (int argc, char** argv)
 {
-	printf("%d\n",argc);
+
 	if(argc!=3){
-		fprintf(stderr, "invalid number of arguments\n");
-		fprintf(stderr,"format: ./xa n bufsize\n");
+		fprintf(stderr, "Error need 2 ints, datsize bufsize\n");
 		return 1;
 	}
-	
+
 	// getting variables from argv
 	n=atoi(argv[1]);
 	bufSize=atoi(argv[2]);
-	
+
 	buf=(int*)malloc(bufSize*sizeof(int));
 
 	//producer and consumer threads
@@ -79,7 +81,7 @@ int main (int argc, char** argv)
 
 	pthread_join(p, NULL);
 	pthread_join(c, NULL);
-
+	printf("%d\n",sum);
 	sem_destroy(&h);
 	sem_destroy(&e);
 
@@ -87,25 +89,33 @@ int main (int argc, char** argv)
 }
 
 void *producer (void *arg) {
-	while ( 1 ) {
+	while ( bufValue<n ) {
+		// check if there is space in the circlular buffer
 		sem_wait(&h); // decrement h
-		bufValue=bufValue%n+1;
-		bufLocation=bufLocation%bufSize;
-		buf[bufLocation]=bufValue;
-		bufValue++;
+		bufLocation=bufLocation%bufSize; // go from 0 to bufsize-1
+		bufValue=(bufValue%n)+1;
+		buf[bufLocation]=bufValue; // go from 1 to n
+		printf("b[%d] %d\n",bufLocation,bufValue);
 		bufLocation++;
+		// increment number of emptiable slots
 		sem_post(&e); // increment e
+		//sleep(1);
 	}
 	pthread_exit(0);
 }
 
 void *consumer (void *arg) {
-	while ( 1 ) {
+	while ( consumerNoReads<n ) {
+		// check if there are holes to be emptied
 		sem_wait(&e); // decrement e
-		//printf("%d\n", buf[bufLocation]);
+		consumerValue=buf[consumerLocation];
+		consumerNoReads++;
+		//printf("%d\n", consumerValue);
 		//fflush(stdin);
-		sum+=buf[bufLocation];
+		consumerLocation=(consumerLocation+1)%bufSize;
+		sum+=consumerValue;
 		sem_post(&h); // increment h
+		//sleep(1);
 	}
 	pthread_exit(0);
 }
