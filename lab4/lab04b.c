@@ -1,4 +1,3 @@
-
 /* xb.c
 
    Pthread producer and consumer example code using pthread_cond_wait
@@ -40,6 +39,7 @@ Hint: use mutex lock to ensure the consistency of the sum calculations
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <string.h>
 
 void *producer (void *arg);
 void *consumer (void *arg);
@@ -47,9 +47,20 @@ void *consumer (void *arg);
 pthread_mutex_t mutex;
 pthread_cond_t condvar;
 int turn = 1;
-int buf = 0; // global data
+int *buf;
+int n;
+int bufSize;
 
-int main (void) {
+int main (int argc, char** argv) {
+	if(argc!=3){
+		fprintf(stderr,"Error need 2 ints, datsize bufsize\n");
+		return 1;
+	}
+	// getting variables from argv
+	n=atoi(argv[1]);
+	bufSize=atoi(argv[2]);
+	buf=(int*)malloc(bufSize*sizeof(int));	
+	
 	pthread_t p, c;
 	pthread_attr_t attr;
 
