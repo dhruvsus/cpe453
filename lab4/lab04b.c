@@ -48,8 +48,15 @@ pthread_mutex_t mutex;
 pthread_cond_t condvar;
 int turn = 1;
 int *buf;
+//int buf=0;
 int n;
 int bufSize;
+int bufLocation=0;
+int bufValue=0;
+int consumerLocation=0;
+int consumerValue;
+int consumerNoReads=0;
+int sum=0;
 
 int main (int argc, char** argv) {
 	if(argc!=3){
@@ -60,7 +67,7 @@ int main (int argc, char** argv) {
 	n=atoi(argv[1]);
 	bufSize=atoi(argv[2]);
 	buf=(int*)malloc(bufSize*sizeof(int));	
-	
+
 	pthread_t p, c;
 	pthread_attr_t attr;
 
@@ -71,29 +78,44 @@ int main (int argc, char** argv) {
 
 	pthread_join (p, NULL);
 	pthread_join (c, NULL);
+	printf("%d\n",sum);
 
 	pthread_cond_destroy(&condvar);
+	return 0;
 }
 
 void *producer (void *arg) {
-	while ( 1 ) {
+	while ( bufValue<n ) {
+		pthread_mutex_lock(&mutex);
 		while ( turn != 1 )
 			pthread_cond_wait (&condvar, &mutex);
 		turn = 2;
-		buf = buf + 1;
-		sleep(1); 
+		bufLocation=bufLocation%bufSize;
+		bufValue = (bufValue%n) + 1;
+		buf[bufLocation]=bufValue;
+		printf("b[%d] %d\n",bufLocation,bufValue);
+		bufLocation++;
+		//sleep(1); 
 		pthread_cond_signal (&condvar);
+		pthread_mutex_unlock(&mutex);
 	}
 	pthread_exit (0);
 }
 
 void *consumer (void *arg) {
-	while ( 1 ) {
+	while ( consumerNoReads<n ) {
+		pthread_mutex_lock(&mutex);
 		while ( turn != 2 )
 			pthread_cond_wait (&condvar, &mutex);
-		printf ("%d\n", buf);
 		turn = 1;
+		consumerValue=buf[consumerLocation];
+		//printf("consumer consumes value %d\n",consumerValue);
+		consumerNoReads++;
+		consumerLocation=(consumerLocation+1)%bufSize;
+		sum+=consumerValue;
+		//printf("%d\n",sum);
 		pthread_cond_signal (&condvar);
+		pthread_mutex_unlock(&mutex);
 	}
 	pthread_exit (0);
 }
