@@ -25,5 +25,7 @@ int main(int argc, char** argv)
 	}
 	//testing stage 1
 	printf("systemwide status=%d, argc=%d\n",systemWide,argc);
+	//fork and exec
+	
 	return 0;
 }
