@@ -1,5 +1,5 @@
-/* example.c */                                                                
-                                                                            
+/* example.c */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -12,8 +12,8 @@ int main(int argc, char *argv[])
 
    cnt = atol(argv[1]);
 
-   sprintf(buff, "%%%dd\n", 8*cnt);
-   for(i = 0; i < cnt; i++)
+   sprintf(buff, "%%%dd\n", 8 * cnt);
+   for (i = 0; i < cnt; i++)
    {
       printf(buff, cnt);
       fflush(stdout);
@@ -21,4 +21,3 @@ int main(int argc, char *argv[])
    }
    return 0;
 }
-
