@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/types.h>
 
 #include "prog2.h"
 int main(int argc, char **argv)
@@ -55,9 +56,9 @@ int main(int argc, char **argv)
 	//testing stage 1
 	printf("systemwide status=%d, argc=%d\n", systemWide, argc);
 	//fork and exec
-	return forkAndExec(executable);
+	return forkAndExec(executable, interval);
 }
-int forkAndExec(char *executable)
+int forkAndExec(char *executable, long interval)
 {
 	int status = 0;
 	int pid = fork();
@@ -69,7 +70,14 @@ int forkAndExec(char *executable)
 	}
 	else
 	{
-		waitpid(-1, NULL, 0);
+		while (!waitpid(pid, NULL, WNOHANG))
+		{	
+			//parent sleeps and then parses files to report stats
+			usleep((useconds_t)interval);
+			
+			printf("waiting for the damn child\n");
+		}
+		//waitpid(-1, NULL, 0);
 	}
 	return status;
 }
