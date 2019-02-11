@@ -51,8 +51,7 @@ int main(int argc, char **argv)
 		}
 		logFile = argv[3];
 	}
-	//testing stage 1
-	printf("systemwide status=%d, argc=%d\n", systemWide, argc);
+
 	//fork and exec
 	return forkAndExec(executable, interval, systemWide, logFile);
 }
@@ -86,7 +85,7 @@ int forkAndExec(char *executable, long interval, int systemWide, char *logFileNa
 
 			//time
 			/* get the current time */
-			time(&time);
+			time(&t);
 			curT = ctime(&t);
 			curT[strlen(curT) - 1] = ']';
 			if (systemWide)
