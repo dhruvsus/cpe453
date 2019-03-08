@@ -1,8 +1,8 @@
 cc=gcc
 cflags=-Wall
 sources=$(*.c)
-target=quine
+target=lab05
 all: $(target)
 
-quine: quine.c
-	$(cc) -o quine quine.c $(cflags)
+lab05: lab05.c
+	$(cc) -o lab05 lab05.c $(cflags)
