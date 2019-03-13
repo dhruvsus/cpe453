@@ -2,10 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <math.h>
+#define min(a, b) (((a) < (b)) ? (a) : (b))
 
 int main(int argc, char *argv[])
 {
-    int *addresses, i = 0, numFrames, pageSize, policy, numAddresses;
+    int *addresses, i = 0, numFrames, pageSize, policy, numAddresses, numPages;
     addresses = mmap(NULL, 500000 * sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     FILE *fd;
     if (argc != 5)
@@ -40,6 +42,10 @@ int main(int argc, char *argv[])
         fprintf(stderr, "incorrect page replacement policy\n");
         return 1;
     }
-    printf("numFrames = %d, pageSize = %d, policy = %d\n", numFrames, pageSize, policy);
+    numPages = min((int)(pow(2, 22) / pageSize), (int)pow(2, 16));
+    for(i=0;i<numAddresses;i++){
+        printf("trying to access page number %d\n", (addresses[i]/pageSize)%(int)pow(2,16));
+    }
+    printf("numFrames = %d, pageSize = %d, policy = %d, pages = %d\n", numFrames, pageSize, policy, numPages);
     return 0;
 }
