@@ -34,11 +34,11 @@ int main(int argc, char *argv[])
     while (fscanf(fd, "%x", &addresses[i]) != EOF)
         i++;
     fclose(fd);
-    frameBuffer = (int *)calloc(numFrames, sizeof(int));
 
     numAddresses = i;
     numFrames = atoi(argv[1]);
     pageSize = atoi(argv[2]);
+    frameBuffer = (int *)calloc(numFrames, sizeof(int));
     if (strcmp(argv[3], "rand") == 0)
     {
         policy = 1;
@@ -99,7 +99,7 @@ void placeInTable(int address, int pageSize, int numPages, int frameBits, int nu
         {
             pageFaults++;
             swaps++;
-            pageTable[pIndex].address == address;
+            pageTable[pIndex].address = address;
             physicalMemory[pageTable[pIndex].frame] = address;
             frameBuffer[bufferIdx] = pageTable[pIndex].frame;
             bufferIdx = (bufferIdx + 1) % numFrames;
