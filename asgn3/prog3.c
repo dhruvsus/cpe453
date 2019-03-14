@@ -3,13 +3,20 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <math.h>
-#define min(a, b) (((a) < (b)) ? (a) : (b))
-void placeInTable(int address, int *pageTable, int *physicalMemory, int pageSize, int numPages, int nBitsFrame, int numFrames);
-int findEmptyFrame(int *physicalMemory, int numFrames);
+#include "prog3.h"
+
+// global variables, for which I will burn in hell
+ptEntry *pageTable;
+int *physicalMemory, *frameBuffer, pageFaults, requests, swaps, bufferIdx = 0, clockHand = 0;
+unsigned rval;
+
 int main(int argc, char *argv[])
 {
-    int *addresses, *pageTable, *physicalMemory;
-    int j = 0, i = 0, numFrames, pageSize, policy, numAddresses, numPages, nBitsFrame;
+    int *addresses;
+    int j = 0, i = 0, numFrames, pageSize, policy, numAddresses, numPages, frameBits;
+    pageFaults = 0;
+    swaps = 0;
+    requests = 0;
     FILE *fd;
 
     if (argc != 5)
@@ -27,6 +34,7 @@ int main(int argc, char *argv[])
     while (fscanf(fd, "%x", &addresses[i]) != EOF)
         i++;
     fclose(fd);
+    frameBuffer = (int *)calloc(numFrames, sizeof(int));
 
     numAddresses = i;
     numFrames = atoi(argv[1]);
@@ -34,6 +42,7 @@ int main(int argc, char *argv[])
     if (strcmp(argv[3], "rand") == 0)
     {
         policy = 1;
+        srand48(1);
     }
     else if (strcmp(argv[3], "fifo") == 0)
     {
@@ -49,7 +58,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     numPages = min((int)(pow(2, 22) / pageSize), (int)pow(2, 16)); // each page table entry contains the frame number, the valid bit, and the recent bit
-    pageTable = mmap(NULL, numPages * sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    pageTable = (ptEntry *)calloc(numPages, sizeof(ptEntry));
     physicalMemory = mmap(NULL, numFrames * sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     for (i = 0; i < numFrames; i++)
         physicalMemory[i] = -1;
@@ -60,53 +69,69 @@ int main(int argc, char *argv[])
         i = i * 2;
         j++;
     }
-    nBitsFrame = j;
-    printf("bits needed to represent frames = %d\n", nBitsFrame);
-    //printf("setRecent %d\n", setRecent);
-    //printf("setvalid %d\n", setValid);
+    frameBits = j;
+    //printf("bits needed to represent frames = %d\n", frameBits);
     for (i = 0; i < numAddresses; i++)
     {
-        placeInTable(addresses[i], pageTable, physicalMemory, pageSize, numPages, nBitsFrame, numFrames);
+        placeInTable(addresses[i], pageSize, numPages, frameBits, numFrames, policy);
     }
-    printf("numFrames = %d, pageSize = %d, policy = %d, pages = %d\n", numFrames, pageSize, policy, numPages);
+    //printf("numFrames = %d, pageSize = %d, policy = %d, pages = %d\n", numFrames, pageSize, policy, numPages);
+    printf("%d pagefaults %d requests %d swaps\n", pageFaults, requests, swaps);
     return 0;
 }
-void placeInTable(int address, int *pageTable, int *physicalMemory, int pageSize, int numPages, int nBitsFrame, int numFrames)
+void placeInTable(int address, int pageSize, int numPages, int frameBits, int numFrames, int policy)
 {
-    // generate bitmasks
-    int setRecent = 1 << nBitsFrame;
-    int setValid = setRecent << 1;
-    int pageTableIndex = (address / pageSize) % numPages;
-    printf("page table index = %d\n", pageTableIndex);
-    // check validity of page
-    if (pageTable[pageTableIndex] >> (nBitsFrame + 1) == 1)
+    requests++;
+    int emptyFrame = -1;
+    int pIndex = (address / pageSize) % numPages;
+    //printf("page table index = %d\n", pIndex);
+    // if page valid, then there is a frame allocated to it
+    // we can check that frame, and utilize it if it refers to a different reference
+    if (pageTable[pIndex].valid == 1)
     {
-        // valid, so check frame and then recent bit
-    }
-    else
-    {
-        int entry = 0, emptyFrame;
-        entry = entry | setValid;
-        emptyFrame = findEmptyFrame(physicalMemory, numFrames);
-        if (emptyFrame >= 0)
+        //printf("valid\n");
+        if (pageTable[pIndex].address == address)
         {
-            // found empty frame
-            entry = entry | emptyFrame;
-            physicalMemory[emptyFrame]=address;
+            //printf("hit\n");
+            pageTable[pIndex].recent = 1;
         }
         else
         {
-            // replacement
+            pageFaults++;
+            swaps++;
+            pageTable[pIndex].address == address;
+            physicalMemory[pageTable[pIndex].frame] = address;
+            frameBuffer[bufferIdx] = pageTable[pIndex].frame;
+            bufferIdx = (bufferIdx + 1) % numFrames;
         }
-        printf("table entry is %d\n", entry);
-        // invalid, so place here
-        // check if there is a free frame, place
-        // address in the free frame and update
-        // page table
-        // else swap
+    }
+    // page is not valid, so try to find an empty frame
+    else
+    {
+        //printf("invalid\n");
+        emptyFrame = findEmptyFrame(numFrames);
+        if (emptyFrame < 0)
+        {
+            //printf("physical memory full\n");
+            // do a swap
+            swap(policy, address, pIndex, numFrames, pageSize);
+            pageFaults++;
+            swaps++;
+        }
+        else
+        {
+            //printf("found empty frame\n");
+            pageFaults++;
+            pageTable[pIndex].address = address;
+            pageTable[pIndex].frame = emptyFrame;
+            pageTable[pIndex].valid = 1;
+            physicalMemory[emptyFrame] = address;
+            frameBuffer[bufferIdx] = emptyFrame;
+            bufferIdx = (bufferIdx + 1) % numFrames;
+        }
     }
 }
-int findEmptyFrame(int *physicalMemory, int numFrames)
+int findEmptyFrame(int numFrames)
 {
     for (int i = 0; i < numFrames; i++)
     {
@@ -116,4 +141,42 @@ int findEmptyFrame(int *physicalMemory, int numFrames)
         }
     }
     return -1;
+}
+void swap(int policy, int address, int pIndex, int numFrames, int pageSize)
+{
+    int swapFrameAddress;
+    int swapPIndex;
+    // rand
+    if (policy == 1)
+    {
+        rval = lrand48() % numFrames;
+    }
+    // fifo
+    if (policy == 2)
+    {
+        rval = frameBuffer[bufferIdx];
+    }
+    // clock
+    if (policy == 3)
+    {
+        while (pageTable[physicalMemory[clockHand] / pageSize].recent != 0)
+        {
+            pageTable[physicalMemory[clockHand] / pageSize].recent = 0;
+            clockHand = (clockHand + 1) % numFrames;
+        }
+        rval = clockHand;
+    }
+    swapFrameAddress = physicalMemory[rval];
+    swapPIndex = swapFrameAddress / pageSize;
+    pageTable[swapPIndex].address = 0;
+    pageTable[swapPIndex].valid = 0;
+    pageTable[swapPIndex].frame = 0;
+    pageTable[swapPIndex].recent = 0;
+    pageTable[pIndex].address = address;
+    pageTable[pIndex].valid = 1;
+    pageTable[pIndex].recent = 0;
+    pageTable[pIndex].frame = rval;
+    physicalMemory[rval] = address;
+    frameBuffer[bufferIdx] = rval;
+    bufferIdx = (bufferIdx + 1) % numFrames;
 }
