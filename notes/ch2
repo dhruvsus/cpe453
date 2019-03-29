@@ -1,0 +1,14 @@
+Von Neumann
+	fetches instruction
+	decodes instruction
+	executes instruction: using memory, disk, and cpu resources
+Operating System:
+	software that virtualizes phyical resources into virtual resources in order to 
+	make it more powerful, general and easy to use.
+	resource manager that provides standard library(API) to allocat virtual resources
+Virtualizing CPU:
+	the processes see multiple CPUs
+Virtualizing Memory:
+	each process sees it's virtual address space that the OS maps to physical memory
+Concurrency:
+	
